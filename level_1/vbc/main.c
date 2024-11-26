@@ -1,10 +1,9 @@
 #include <stdio.h>
+#include <malloc.h>
 #include <ctype.h>
 
 #include <stdlib.h>
 #include <stddef.h>
-
-
 
 typedef struct node {
     enum {
@@ -17,7 +16,7 @@ typedef struct node {
     struct node *r;
 }   node;
 
-node *parse_internal(char **s);
+node *parse_real(char **s);
 
 node * new_node(node n)
 {
@@ -66,10 +65,11 @@ int expect(char **s, char c)
     return (0);
 }
 
-node *parse_val(char **s) {
+node *parse_nbr(char **s) {
 	if (isdigit(**s)) {
 		node temp = {VAL, **s - '0', NULL, NULL};
-		return new_node(temp);
+		(*s)++;
+	       return new_node(temp);	
 	}
 	unexpected_char(**s);
 	return NULL;
@@ -77,40 +77,36 @@ node *parse_val(char **s) {
 
 node *parse_fact(char **s) {
 	if (accept(s, '(')) {
-		node *expr = parse_internal(s);
+		node *expr = parse_real(s);
 		if (!expect(s, ')')) {
 			destroy_tree(expr);
 			return NULL;
 		}
 		return expr;
 	}
-	return parse_val(s);
+	return parse_nbr(s);
 }
 
 node *parse_term(char **s) {
 	node *left = parse_fact(s);
-	if (!left)
-		return NULL;
 	while (accept(s, '*')) {
 		node *right = parse_fact(s);
 		if (!right) {
 			destroy_tree(left);
-			return NULL;
+			return NULL;	
 		}
-		node temp = {MULTI, 0, left, right};
+		node temp = {MULTI, 0,  left, right};
 		left = new_node(temp);
 	}
 	return left;
 }
 
-node *parse_internal(char **s) {
+node *parse_real(char **s) {
 	node *left = parse_term(s);
-	if (!left)
-		return NULL;
 	while (accept(s, '+')) {
 		node *right = parse_term(s);
 		if (!right) {
-			destroy_tree(left);
+		destroy_tree(left);
 			return NULL;
 		}
 		node temp = {ADD, 0, left, right};
@@ -119,13 +115,13 @@ node *parse_internal(char **s) {
 	return left;
 }
 
-
 node *parse_expr(char *s)
 {
-    node *ret = parse_internal(&s);
+    node *ret = parse_real(&s);
     if(*s)
     {
-        destroy_tree(ret);
+        unexpected_char(*s);
+	destroy_tree(ret);
         return (NULL);
     }
     return (ret);
